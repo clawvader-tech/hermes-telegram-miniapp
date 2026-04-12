@@ -97,6 +97,18 @@ td code{font-size:.8rem}
 .ts-item li{margin-bottom:4px}
 .ts-item code{font-size:.78rem}
 
+/* ─── AUTH FLOW ─── */
+.auth-flow{max-width:560px;margin:24px auto}
+.auth-step{display:flex;gap:14px;align-items:flex-start;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;transition:border-color .2s}
+.auth-step:hover{border-color:var(--border-light)}
+.auth-step-num{width:28px;height:28px;border-radius:8px;background:var(--accent-bg);border:1px solid rgba(99,102,241,.25);color:var(--accent-light);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.auth-step-body{font-size:.84rem;color:var(--text2);line-height:1.6;padding-top:3px}
+.auth-step-body strong{color:var(--text)}
+.auth-step-body code{font-size:.78rem}
+.auth-step-ok{border-color:rgba(34,197,94,.2)}
+.auth-step-ok .auth-step-num{background:var(--green-bg);border-color:rgba(34,197,94,.25);color:#4ade80}
+.auth-arrow{text-align:center;color:var(--text3);font-size:16px;line-height:1;padding:4px 0}
+
 /* ─── FOOTER ─── */
 .footer{border-top:1px solid var(--border);padding:40px 0;text-align:center}
 .footer p{font-size:.8rem;color:var(--text3)}
@@ -245,25 +257,41 @@ cloudflared tunnel run hermes</pre>
     <h2>How authentication works</h2>
     <p>Ed25519 signature validation — Telegram's official method. No bot token needed for verification.</p>
 
-    <div class="diagram">
-<span class="comment">┌─────────────────┐                    ┌─────────────────┐</span>
-<span class="comment">│</span>  Telegram Client <span class="comment">│</span>                    <span class="comment">│</span>   Your Server   <span class="comment">│</span>
-<span class="comment">└────────┬────────┘</span>                    <span class="comment">└────────┬────────┘</span>
-         │                                     │
-         │  User opens mini app                │
-         │  Telegram generates <span class="highlight">initData</span>       │
-         │  (signed with Ed25519 key)          │
-         │                                     │
-         │  <span class="highlight">X-Telegram-Init-Data</span> header ──>│
-         │                                     │
-         │                              Verify signature
-         │                              using <span class="highlight">Telegram's
-         │                              public key</span>
-         │                                     │
-         │                              Check user ID
-         │                              matches <span class="highlight">OWNER_ID</span>
-         │                                     │
-         │  <──── Authenticated ───────────────│
+    <div class="auth-flow">
+      <div class="auth-step">
+        <div class="auth-step-num">1</div>
+        <div class="auth-step-body">
+          <strong>You open the mini app</strong> in Telegram. Telegram generates a signed <code>initData</code> payload using their Ed25519 private key.
+        </div>
+      </div>
+      <div class="auth-arrow">↓</div>
+      <div class="auth-step">
+        <div class="auth-step-num">2</div>
+        <div class="auth-step-body">
+          The mini app sends <code>initData</code> to your server via the <code>X-Telegram-Init-Data</code> header on every API request.
+        </div>
+      </div>
+      <div class="auth-arrow">↓</div>
+      <div class="auth-step">
+        <div class="auth-step-num">3</div>
+        <div class="auth-step-body">
+          Your server verifies the <strong>Ed25519 signature</strong> using Telegram's published public key. No bot token needed — just their public key.
+        </div>
+      </div>
+      <div class="auth-arrow">↓</div>
+      <div class="auth-step">
+        <div class="auth-step-num">4</div>
+        <div class="auth-step-body">
+          The server checks that the <strong>user ID</strong> matches your <code>TELEGRAM_OWNER_ID</code>. Only you can access the API.
+        </div>
+      </div>
+      <div class="auth-arrow">↓</div>
+      <div class="auth-step auth-step-ok">
+        <div class="auth-step-num">✓</div>
+        <div class="auth-step-body">
+          <strong>Authenticated.</strong> The request goes through. If initData is missing (e.g. browser testing), Bearer token auth is used instead.
+        </div>
+      </div>
     </div>
 
     <div class="callout callout-info">
