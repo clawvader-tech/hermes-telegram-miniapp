@@ -128,6 +128,94 @@ body {
   text-align: center;
 }
 
+/* ─── SESSION DRAWER ───────────────────────────────────────────────────── */
+.session-drawer-overlay {
+  position: fixed; inset: 0; z-index: 52;
+  background: rgba(0,0,0,.6);
+  opacity: 0; pointer-events: none;
+  transition: opacity .25s;
+}
+.session-drawer-overlay.open { opacity: 1; pointer-events: all; }
+.session-drawer {
+  position: fixed; top: 0; left: 0; bottom: 0;
+  width: var(--menu-w); max-width: 320px;
+  background: var(--sec-bg);
+  z-index: 53;
+  display: flex; flex-direction: column;
+  transform: translateX(-100%);
+  transition: transform .28s cubic-bezier(.4,0,.2,1);
+  border-right: 1px solid var(--border);
+}
+.session-drawer.open { transform: translateX(0); }
+.session-drawer-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: calc(var(--safe-top) + 12px) 16px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.session-drawer-title { font-size: 13px; font-weight: 700; color: var(--text); letter-spacing: .3px; }
+.session-new-btn {
+  width: 28px; height: 28px; border-radius: 8px;
+  background: var(--btn); border: none; color: #fff;
+  font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; line-height: 1;
+}
+.session-new-btn:active { background: rgba(79,70,229,.35); }
+.session-list {
+  flex: 1; overflow-y: auto; padding: 8px 0;
+}
+.session-list::-webkit-scrollbar { width: 2px; }
+.session-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,.08); border-radius: 2px; }
+.session-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px; cursor: pointer;
+}
+.session-item:active { background: rgba(79,70,229,.15); }
+.session-item.active { background: rgba(79,70,229,.12); }
+.session-item.active .session-item-name { color: var(--text); }
+.session-icon { font-size: 16px; width: 24px; text-align: center; flex-shrink: 0; }
+.session-info { flex: 1; min-width: 0; }
+.session-item-name { font-size: 12px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.session-item-meta { font-size: 10px; color: var(--hint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.session-item-time { font-size: 9px; color: var(--hint); flex-shrink: 0; }
+.session-empty {
+  padding: 24px 16px; text-align: center;
+  font-size: 12px; color: var(--hint); line-height: 1.5;
+}
+.session-footer {
+  padding: 10px 12px;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 8px; flex-shrink: 0;
+}
+.session-footer-btn {
+  flex: 1; padding: 8px 12px; border-radius: 8px;
+  border: 1px solid var(--border); background: transparent;
+  color: var(--text); font-size: 11px; font-weight: 600; cursor: pointer;
+  text-align: center;
+}
+.session-footer-btn:active { opacity: .8; }
+.session-ctx-menu {
+  position: fixed; z-index: 60;
+  background: var(--sec-bg); border: 1px solid var(--border);
+  border-radius: 10px; padding: 4px; min-width: 140px;
+  display: none;
+  box-shadow: 0 8px 24px rgba(0,0,0,.4);
+}
+.session-ctx-menu.open { display: block; }
+.session-ctx-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px; font-size: 12px; cursor: pointer;
+  border-radius: 6px; color: var(--text);
+}
+.session-ctx-item:active { background: rgba(255,255,255,.07); }
+.session-ctx-item.danger { color: #ef4444; }
+.session-ctx-item .icon { font-size: 14px; width: 18px; text-align: center; }
+/* Rename input in drawer */
+.session-rename-input {
+  width: 100%; background: rgba(255,255,255,.06); border: 1px solid var(--btn);
+  border-radius: 6px; padding: 6px 8px; color: var(--text); font-size: 12px;
+  outline: none; box-sizing: border-box;
+}
+
 /* ─── HEADER BAR ────────────────────────────────────────────────────────── */
 .header-bar {
   display: flex; align-items: center;
@@ -152,6 +240,9 @@ body {
   letter-spacing: .3px; text-align: center;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+.session-title { display: flex; align-items: center; justify-content: center; gap: 4px; cursor: pointer; }
+.session-title::after { content: '▼'; font-size: 7px; opacity: .5; margin-top: 2px; }
+.session-title:hover { opacity: .8; }
 .header-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
 .conn-dot {
   width: 7px; height: 7px; border-radius: 50%;
@@ -693,6 +784,23 @@ body {
   <div class="drawer-footer">Hermes v3 &mdash; tap a command to run</div>
 </div>
 
+<!-- SESSION DRAWER -->
+<div class="session-drawer-overlay" id="session-drawer-overlay" onclick="closeSessionDrawer()"></div>
+<div class="session-drawer" id="session-drawer">
+  <div class="session-drawer-header">
+    <div class="session-drawer-title">Sessions</div>
+    <button class="session-new-btn" id="session-new-btn" title="New session">+</button>
+  </div>
+  <div class="session-list" id="session-list"></div>
+  <div class="session-footer">
+    <button class="session-footer-btn" id="session-delete-btn" onclick="deleteCurrentSession()">Delete</button>
+  </div>
+</div>
+<div class="session-ctx-menu" id="session-ctx-menu">
+  <div class="session-ctx-item" onclick="renameSessionFromCtx()"><span class="icon">✏️</span>Rename</div>
+  <div class="session-ctx-item danger" onclick="deleteSessionFromCtx()"><span class="icon">🗑️</span>Delete</div>
+</div>
+
 <!-- HEADER BAR -->
 <div class="header-bar">
   <button class="menu-btn" id="menu-btn" onclick="openDrawer()" aria-label="Menu">
@@ -702,7 +810,7 @@ body {
       <line x1="3" y1="18" x2="21" y2="18"/>
     </svg>
   </button>
-  <div class="header-title">Hermes</div>
+  <div class="header-title session-title" id="session-title" onclick="openSessionDrawer()">Hermes</div>
   <div class="header-right">
     <div style="display:flex;align-items:center;gap:5px">
       <div class="conn-dot" id="conn-dot"></div>
@@ -884,6 +992,171 @@ function closeDrawer() {
   document.getElementById('menu-drawer').classList.remove('open');
   document.getElementById('drawer-overlay').classList.remove('open');
   WebApp?.HapticFeedback?.impactOccurred('light');
+}
+
+// ─── SESSION SWITCHER ───────────────────────────────────────────────────────
+// Bearer token fallback — set API_SERVER_KEY in hermes .env as HARDcoded_API_TOKEN
+// This enables the Mini App to authenticate without Telegram initData validation.
+const HARDcoded_API_TOKEN = null; // Set via ?token= query param or CloudStorage
+
+let _ctxSessionId = null;
+
+function openSessionDrawer() {
+  const overlay = document.getElementById('session-drawer-overlay');
+  const drawer = document.getElementById('session-drawer');
+  overlay.classList.add('open');
+  drawer.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  renderSessionsList();
+  // Wire + button
+  document.getElementById('session-new-btn').onclick = createNewSession;
+}
+
+function closeSessionDrawer() {
+  const overlay = document.getElementById('session-drawer-overlay');
+  const drawer = document.getElementById('session-drawer');
+  overlay.classList.remove('open');
+  drawer.classList.remove('open');
+  document.body.style.overflow = '';
+  closeSessionCtxMenu();
+}
+
+async function loadSessions() {
+  try {
+    const r = await fetchWithTimeout(API + '/api/sessions', {
+      headers: headers(),
+    });
+    if (!r.ok) return [];
+    const data = await r.json();
+    return data.sessions || [];
+  } catch (_) {
+    return [];
+  }
+}
+
+async function renderSessionsList() {
+  const list = document.getElementById('session-list');
+  list.innerHTML = '<div style="padding:20px;color:var(--hint);text-align:center;font-size:12px">Loading...</div>';
+  const sessions = await loadSessions();
+  if (!sessions.length) {
+    list.innerHTML = '<div class="session-empty">No sessions yet — tap + to start your first chat.</div>';
+    return;
+  }
+  list.innerHTML = '';
+  for (const s of sessions) {
+    const div = document.createElement('div');
+    div.className = 'session-item' + (s.id === sessionId ? ' active' : '');
+    const timeAgo = s.last_active ? relativeTime(new Date(s.last_active * 1)) : '';
+    div.innerHTML = `
+      <div class="session-icon">💬</div>
+      <div class="session-info">
+        <div class="session-item-name">${esc(s.title || 'New Chat')}</div>
+        <div class="session-item-meta">${s.message_count} msg${timeAgo ? ' · ' + timeAgo : ''}</div>
+      </div>
+      <div class="session-item-time">${timeAgo || ''}</div>
+    `;
+    div.onclick = () => switchToSession(s.id);
+    div.oncontextmenu = (e) => showSessionCtxMenu(e, s.id);
+    list.appendChild(div);
+  }
+}
+
+function relativeTime(date) {
+  const diff = Date.now() - date.getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'now';
+  if (mins < 60) return mins + 'm ago';
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return hrs + 'h ago';
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return days + 'd ago';
+  return date.toLocaleDateString();
+}
+
+function switchToSession(id) {
+  sessionId = id;
+  persistSession();
+  closeSessionDrawer();
+  // Update header
+  const titleEl = document.getElementById('session-title');
+  if (titleEl) titleEl.textContent = 'Hermes';
+  // Refresh current chat
+  addMsg('system', 'Switched to session. Loading...');
+  loadSessionHistory();
+}
+
+async function loadSessionHistory() {
+  try {
+    const data = await api('/api/sessions/' + sessionId + '/messages');
+    if (data && data.messages) {
+      const msgs = document.getElementById('chat-messages');
+      msgs.innerHTML = '';
+      for (const m of data.messages) {
+        addMsg(m.role, m.content, m.name);
+      }
+    }
+  } catch (_) {}
+}
+
+function createNewSession() {
+  const token = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+  sessionId = 'miniapp-' + token;
+  persistSession();
+  closeSessionDrawer();
+  // Clear chat
+  document.getElementById('chat-messages').innerHTML = '';
+  addMsg('system', 'New session started. Go ahead!');
+  const titleEl = document.getElementById('session-title');
+  if (titleEl) titleEl.textContent = 'Hermes';
+}
+
+async function deleteCurrentSession() {
+  if (!sessionId) return;
+  if (!confirm('Delete this session?')) return;
+  closeSessionDrawer();
+  try {
+    await api('/api/sessions/' + sessionId, { method: 'DELETE' });
+  } catch (_) {}
+  createNewSession();
+}
+
+// Context menu
+function showSessionCtxMenu(e, sid) {
+  e.preventDefault();
+  e.stopPropagation();
+  _ctxSessionId = sid;
+  const menu = document.getElementById('session-ctx-menu');
+  menu.classList.add('open');
+  menu.style.top = Math.min(e.clientY, window.innerHeight - 100) + 'px';
+  menu.style.left = Math.min(e.clientX, window.innerWidth - 160) + 'px';
+}
+
+function closeSessionCtxMenu() {
+  const menu = document.getElementById('session-ctx-menu');
+  if (menu) menu.classList.remove('open');
+  _ctxSessionId = null;
+}
+
+async function renameSessionFromCtx() {
+  closeSessionCtxMenu();
+  if (!_ctxSessionId) return;
+  const name = prompt('Session name:');
+  if (!name) return;
+  try {
+    await api('/api/sessions/' + _ctxSessionId, { method: 'PATCH', headers: {}, body: { title: name } });
+    renderSessionsList();
+  } catch (_) {}
+}
+
+async function deleteSessionFromCtx() {
+  closeSessionCtxMenu();
+  if (!_ctxSessionId) return;
+  if (!confirm('Delete this session?')) return;
+  try {
+    await api('/api/sessions/' + _ctxSessionId, { method: 'DELETE' });
+  } catch (_) {}
+  if (_ctxSessionId === sessionId) createNewSession();
+  else renderSessionsList();
 }
 
 async function loadCommands() {
@@ -1070,7 +1343,9 @@ function headers(extra) {
   const h = { 'Content-Type': 'application/json' };
   if (isTelegram && WebApp?.initData) h['X-Telegram-Init-Data'] = WebApp.initData;
   if (sessionId) h['X-Hermes-Session-Id'] = sessionId;
-  if (apiToken) h['Authorization'] = 'Bearer ' + apiToken;
+  // Always include Bearer auth if we have any token available
+  const effectiveToken = apiToken || HARDcoded_API_TOKEN;
+  if (effectiveToken) h['Authorization'] = 'Bearer ' + effectiveToken;
   return { ...h, ...(extra||{}) };
 }
 
