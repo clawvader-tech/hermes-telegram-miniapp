@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.2] — 2026-04-15
+
+### Fixed
+
+**`hermes update` silently replaces mini app files** — the upstream `hermes update` command pulls from NousResearch/hermes-agent, which has its own `web_server.py`. Every update that touches this file overwrites the mini app's custom Telegram auth, agent endpoints, etc. — even with `git update-index --assume-unchanged` set (that flag only affects `git status`, not `git pull`).
+
+**Fix:** A post-merge git hook that auto-redeploys the mini app after every `hermes update`.
+
+### Added
+
+- **Post-merge git hook** (`hooks/post-merge`) — auto-redeploys `web_server.py` and `web_dist/` after any `git pull` (including `hermes update`). Re-marks `assume-unchanged`, restarts the web server if it was running.
+- **`--install-hook` flag** in `deploy.sh` — deploys files AND installs the hook in one step (recommended for first-time setup)
+- **`HERMES_AGENT_DIR` env var** — override the target directory (default: `~/.hermes/hermes-agent`)
+- **Troubleshooting section** in README for "mini app broke after hermes update"
+
+### Changed
+
+- `deploy.sh` now resolves paths relative to the script location (no more hardcoded absolute paths)
+- README Step 4 updated to recommend `./deploy.sh --install-hook` as the primary install method
+
 ## [2.0.1] — 2026-04-14
 
 ### Fixed

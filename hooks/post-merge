@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+# post-merge git hook — auto-redeploy Telegram Mini App after `hermes update`
+#
+# Installed by: ./deploy.sh --install-hook
+# Location:     ~/.hermes/hermes-agent/.git/hooks/post-merge
+#
+# When `hermes update` (or any `git pull`) completes, this hook:
+#   1. Checks if the mini app standalone repo exists
+#   2. Re-deploys web_server.py and web_dist/ from the standalone repo
+#   3. Marks web_server.py as assume-unchanged so git status stays clean
+#   4. Restarts the web server if it was running
+#
+# This prevents upstream web_server.py changes from silently replacing
+# the Telegram mini app's custom auth, agent endpoints, etc.
+
+MINIAPP_REPO="__MINIAPP_REPO__"
+HERMES_AGENT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
+
+# Guard: only run if the standalone repo exists
+if [[ ! -d "$MINIAPP_REPO" ]]; then
+    echo "[miniapp-hook] Standalone repo not found at $MINIAPP_REPO — skipping redeploy"
+    exit 0
+fi
+
+# Guard: only run if deploy.sh exists
+if [[ ! -x "$MINIAPP_REPO/deploy.sh" ]]; then
+    echo "[miniapp-hook] deploy.sh not found or not executable — skipping"
+    exit 0
+fi
+
+echo "[miniapp-hook] hermes update pulled new code — redeploying Telegram Mini App..."
+
+# Deploy (no backup — we have git as our backup)
+if bash "$MINIAPP_REPO/deploy.sh" --no-backup; then
+    # Re-mark as assume-unchanged so git status stays clean
+    cd "$HERMES_AGENT_DIR"
+    git update-index --assume-unchanged hermes_cli/web_server.py 2>/dev/null || true
+
+    # Restart web server if it was running
+    SERVER_PID=$(pgrep -f 'web_server.*start_server.*9119' 2>/dev/null || true)
+    if [[ -n "$SERVER_PID" ]]; then
+        echo "[miniapp-hook] Restarting web server (was PID $SERVER_PID)..."
+        kill "$SERVER_PID" 2>/dev/null || true
+        sleep 1
+        cd "$HERMES_AGENT_DIR" && source venv/bin/activate
+        nohup python -B -c "from hermes_cli.web_server import start_server; start_server('127.0.0.1', 9119, False)" > /tmp/hermes-dashboard.log 2>&1 &
+        NEW_PID=$!
+        echo "[miniapp-hook] Web server restarted (PID $NEW_PID)"
+    fi
+
+    echo "[miniapp-hook] ✓ Mini app redeployed successfully"
+else
+    echo "[miniapp-hook] ✗ Deploy failed — mini app may be broken until manual fix"
+    echo "[miniapp-hook]   Run manually: cd $MINIAPP_REPO && ./deploy.sh"
+fi

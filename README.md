@@ -60,15 +60,26 @@ cd web && npm install && npm run build && cd ..
 ### Step 4: Deploy to your Hermes installation
 
 ```bash
-# Use the deploy script (backs up existing files, validates syntax, auto-rolls back on failure)
-./deploy.sh
+# Deploy and install the auto-update hook (first time)
+./deploy.sh --install-hook
+```
 
-# Or manually:
-cp hermes_cli/web_server.py ~/.hermes/hermes-agent/hermes_cli/web_server.py
-cp -r hermes_cli/web_dist/ ~/.hermes/hermes-agent/hermes_cli/web_dist/
+This does three things:
+1. **Deploys** `web_server.py` and `web_dist/` to your hermes-agent installation (with backup)
+2. **Installs a post-merge git hook** that auto-redeploys the mini app after every `hermes update`
+3. **Marks `web_server.py` as assume-unchanged** so `git status` stays clean
 
-# Protect against upstream git pull overwrites:
-cd ~/.hermes/hermes-agent && git update-index --assume-unchanged hermes_cli/web_server.py
+**Why the hook?** `hermes update` pulls from the upstream NousResearch repo, which has its own `web_server.py`. Without the hook, upstream changes silently replace the mini app's custom Telegram auth. The hook detects the update and re-deploys automatically.
+
+If you prefer manual control (no hook):
+```bash
+./deploy.sh                           # Deploy with backup
+./deploy.sh --no-backup               # Deploy without backup
+```
+
+**Custom target directory:**
+```bash
+HERMES_AGENT_DIR=/path/to/hermes-agent ./deploy.sh --install-hook
 ```
 
 ### Step 5: Configure environment variables
@@ -239,12 +250,21 @@ Telegram generates initData once when the mini app opens. It's valid for 24 hour
 
 Free `cloudflared tunnel --url` tunnels get a random URL each restart. For a stable URL, set up a named tunnel with your own domain (see Step 6, Option B).
 
+### Mini app broke after `hermes update`
+
+If you run `hermes update` and the mini app stops working (401 errors, missing features):
+
+1. This happens because the upstream `hermes update` replaces `web_server.py` with the stock version (no Telegram auth)
+2. **Fix:** Redeploy and install the hook: `./deploy.sh --install-hook`
+3. The post-merge hook prevents this — it auto-redeploys after every `hermes update`
+4. If the hook is already installed but didn't fire, check: `cat ~/.hermes/hermes-agent/.git/hooks/post-merge`
+
 ### Upstream git pull overwrote custom files
 
-If a `git pull` from the Hermes Agent upstream overwrites `web_server.py` or `web_dist/`:
+This should not happen if the post-merge hook is installed. If it does:
 
-1. The deploy script prevents this: `git update-index --assume-unchanged hermes_cli/web_server.py`
-2. If it happened anyway, redeploy: `cd ~/projects/telegram-miniapp-v2 && ./deploy.sh`
+1. Redeploy: `cd ~/projects/telegram-miniapp-v2 && ./deploy.sh`
+2. Reinstall the hook: `./deploy.sh --install-hook`
 3. Restart the server after redeploying
 
 ## Architecture

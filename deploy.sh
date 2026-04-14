@@ -1,20 +1,39 @@
 #!/usr/bin/env bash
-# deploy.sh — Deploy custom Telegram Mini App to hermes-agent installation.
-# Copies web_server.py and web_dist/ from the standalone repo into the
-# hermes-agent installation directory. Backs up existing files first.
+# deploy.sh — Deploy Telegram Mini App to hermes-agent installation.
 #
-# Usage: ./deploy.sh [--no-backup]
+# Usage:
+#   ./deploy.sh                # Deploy with backup
+#   ./deploy.sh --no-backup    # Deploy without backup (used by post-merge hook)
+#   ./deploy.sh --install-hook # Install post-merge hook + deploy (first-time setup)
 #
-# Source:  /home/adam/projects/telegram-miniapp-v2/
-# Target:  /home/adam/.hermes/hermes-agent/
+# Source:  This repo (hermes-telegram-miniapp)
+# Target:  ~/.hermes/hermes-agent/
 
 set -euo pipefail
 
-SOURCE_DIR="/home/adam/projects/telegram-miniapp-v2"
-TARGET_DIR="/home/adam/.hermes/hermes-agent"
-NO_BACKUP=false
+# Resolve paths relative to this script's location
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+SOURCE_DIR="$SCRIPT_DIR"
+TARGET_DIR="${HERMES_AGENT_DIR:-$HOME/.hermes/hermes-agent}"
 
-[[ "${1:-}" == "--no-backup" ]] && NO_BACKUP=true
+NO_BACKUP=false
+INSTALL_HOOK=false
+
+for arg in "$@"; do
+    case "$arg" in
+        --no-backup)    NO_BACKUP=true ;;
+        --install-hook) INSTALL_HOOK=true ;;
+        --help|-h)
+            echo "Usage: $0 [--no-backup] [--install-hook]"
+            echo ""
+            echo "  --no-backup     Skip timestamped backup of existing files"
+            echo "  --install-hook  Install post-merge git hook for auto-redeploy on hermes update"
+            echo "  --help          Show this help"
+            exit 0
+            ;;
+        *) echo "Unknown argument: $arg"; exit 1 ;;
+    esac
+done
 
 # Colors
 RED='\033[0;31m'
@@ -28,7 +47,8 @@ die()  { echo -e "${RED}[deploy]${NC} $*" >&2; exit 1; }
 
 # --- Pre-checks ---
 [[ -d "$SOURCE_DIR" ]] || die "Source dir not found: $SOURCE_DIR"
-[[ -d "$TARGET_DIR" ]] || die "Target dir not found: $TARGET_DIR"
+[[ -d "$TARGET_DIR" ]] || die "Target dir not found: $TARGET_DIR (set HERMES_AGENT_DIR to override)"
+[[ -f "$TARGET_DIR/.git/HEAD" ]] || die "Target is not a git repo: $TARGET_DIR"
 [[ -f "$SOURCE_DIR/hermes_cli/web_server.py" ]] || die "web_server.py not in source"
 [[ -d "$SOURCE_DIR/hermes_cli/web_dist" ]] || die "web_dist/ not built yet — run 'cd web && npm run build' first"
 
@@ -42,14 +62,36 @@ if grep -q 'hmac.new(_TG_BOT_TOKEN.encode(), "WebAppData".encode()' "$SOURCE_DIR
     die "web_server.py still has the BUGGY HMAC formula (swapped args). Fix before deploying."
 fi
 
+# --- Install hook (if requested) ---
+if [[ "$INSTALL_HOOK" == "true" ]]; then
+    HOOK_SRC="$SOURCE_DIR/hooks/post-merge"
+    HOOK_DST="$TARGET_DIR/.git/hooks/post-merge"
+
+    if [[ ! -f "$HOOK_SRC" ]]; then
+        die "Hook template not found: $HOOK_SRC"
+    fi
+
+    # Replace placeholder with actual path
+    log "Installing post-merge hook..."
+    sed "s|__MINIAPP_REPO__|$SOURCE_DIR|g" "$HOOK_SRC" > "$HOOK_DST"
+    chmod +x "$HOOK_DST"
+
+    # Verify the replacement worked
+    if grep -q '__MINIAPP_REPO__' "$HOOK_DST"; then
+        die "Failed to replace __MINIAPP_REPO__ placeholder in hook"
+    fi
+
+    log "Hook installed → $HOOK_DST"
+    log "Hook will auto-redeploy after every 'hermes update'"
+fi
+
 # --- Backup ---
 BACKUP_DIR=""
 if [[ "$NO_BACKUP" == "false" ]]; then
     TIMESTAMP=$(date +%Y%m%d-%H%M%S)
     BACKUP_DIR="$TARGET_DIR/hermes_cli/backups/deploy-$TIMESTAMP"
     mkdir -p "$BACKUP_DIR"
-    
-    # Backup current files
+
     if [[ -f "$TARGET_DIR/hermes_cli/web_server.py" ]]; then
         cp -p "$TARGET_DIR/hermes_cli/web_server.py" "$BACKUP_DIR/"
         log "Backed up web_server.py → $BACKUP_DIR/"
@@ -82,8 +124,18 @@ if [[ "$HAS_TG_AUTH" == "0" ]]; then
     die "Deployed frontend is missing Telegram auth headers!"
 fi
 
+# --- Git protection ---
+cd "$TARGET_DIR"
+git update-index --assume-unchanged hermes_cli/web_server.py 2>/dev/null || true
+
 log "Deployment complete."
 echo ""
+
+if [[ "$INSTALL_HOOK" == "true" ]]; then
+    log "post-merge hook installed — mini app will auto-redeploy after 'hermes update'"
+    echo ""
+fi
+
 warn "NOTE: You must restart the web server for changes to take effect."
 warn "  kill \$(pgrep -f 'web_server.*start_server.*9119')"
 warn "  cd $TARGET_DIR && source venv/bin/activate"
