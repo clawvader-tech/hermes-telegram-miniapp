@@ -78,6 +78,9 @@ _reveal_timestamps: List[float] = []
 _REVEAL_MAX_PER_WINDOW = 5
 _REVEAL_WINDOW_SECONDS = 30
 
+# Request size limit (1 MB)
+_MAX_REQUEST_SIZE = 1024 * 1024
+
 # ---------------------------------------------------------------------------
 # Auth dependency for write/destructive endpoints.
 # Uses lazy import of _validate_telegram_init_data to avoid forward-reference
@@ -130,12 +133,17 @@ _TG_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 _TG_OWNER_ID = os.getenv("TELEGRAM_OWNER_ID", "") or os.getenv("TELEGRAM_ALLOWED_USERS", "")
 _GATEWAY_PORT = int(os.getenv("HERMES_GATEWAY_PORT", "8642"))
 
+# Prompt blacklist for agent spawning (prevents shell injection)
+_PROMPT_BLACKLIST = re.compile(r'[;&|`$]')
+
 _CORS_ORIGINS = [
     "http://localhost:9119",
     "http://127.0.0.1:9119",
     "https://web.telegram.org",
-    "https://app.rpclaw.net",
 ]
+# Allow additional origins via env var (comma-separated)
+_EXTRA_ORIGINS = os.getenv("HERMES_CORS_ORIGINS", "").split(",")
+_CORS_ORIGINS.extend([o.strip() for o in _EXTRA_ORIGINS if o.strip()])
 
 app.add_middleware(
     CORSMiddleware,
@@ -1882,7 +1890,8 @@ def _check_owner_and_expiry(raw_pairs: Dict[str, str]) -> Optional[Dict[str, Any
     """Validate auth_date freshness and owner identity. Returns user dict or None."""
     auth_date_str = raw_pairs.get("auth_date", "0")
     auth_date = int(auth_date_str) if auth_date_str else 0
-    if time.time() - auth_date > 86400:
+    # 5 minute expiry to match README claims (prevent replay attacks)
+    if time.time() - auth_date > 300:
         _log.warning("Telegram initData expired: auth_date=%d age=%ds", auth_date, int(time.time() - auth_date))
         return None
 
@@ -1985,6 +1994,23 @@ def _validate_telegram_init_data(init_data: str) -> Optional[Dict[str, Any]]:
     except Exception as e:
         _log.warning("Telegram initData validation error: %s", e)
         return None
+
+
+@app.middleware("http")
+async def request_size_middleware(request: Request, call_next):
+    """Check request Content-Length against max size limit."""
+    content_length = request.headers.get("content-length")
+    if content_length:
+        try:
+            size = int(content_length)
+            if size > _MAX_REQUEST_SIZE:
+                return JSONResponse(
+                    {"error": "Request too large"},
+                    status_code=413
+                )
+        except ValueError:
+            pass
+    return await call_next(request)
 
 
 @app.middleware("http")
@@ -2285,6 +2311,10 @@ class SpawnBody(BaseModel):
 @app.post("/api/agents")
 async def spawn_agent(body: SpawnBody, _: None = Depends(_require_auth)):
     """Spawn a new agent instance in a tmux session."""
+    # Validate prompt for shell injection attempts
+    if _PROMPT_BLACKLIST.search(body.prompt):
+        raise HTTPException(status_code=400, detail="Invalid characters in prompt")
+    
     # Sanitize name: only allow alphanumeric, hyphens, underscores
     name = body.name or _make_agent_name()
     name = _validate_agent_name(name)
