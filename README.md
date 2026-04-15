@@ -64,12 +64,13 @@ cd web && npm install && npm run build && cd ..
 ./deploy.sh --install-hook
 ```
 
-This does three things:
-1. **Deploys** `web_server.py` and `web_dist/` to your hermes-agent installation (with backup)
-2. **Installs a post-merge git hook** that auto-redeploys the mini app after every `hermes update`
-3. **Marks `web_server.py` as assume-unchanged** so `git status` stays clean
+This does four things:
+1. **Builds** the frontend from standalone repo source (includes Telegram initData injection, Chat/Agents tabs)
+2. **Deploys** `web_server.py` and `web_dist/` to your hermes-agent installation (with backup)
+3. **Installs a post-merge git hook** that auto-redeploys the mini app after every `hermes update`
+4. **Marks `web_server.py` as assume-unchanged** so `git status` stays clean
 
-**Why the hook?** `hermes update` pulls from the upstream NousResearch repo, which has its own `web_server.py`. Without the hook, upstream changes silently replace the mini app's custom Telegram auth. The hook detects the update and re-deploys automatically.
+**Why the hook?** `hermes update` pulls from the upstream NousResearch repo, which overwrites both `web_server.py` and `web/src/` files (removing Telegram auth, Chat/Agents tabs). The hook detects the update, rebuilds from standalone source, and re-deploys automatically.
 
 If you prefer manual control (no hook):
 ```bash
@@ -306,7 +307,7 @@ Optional Local Models (CPU)
 
 ## Security
 
-v2.0.1 addresses a critical HMAC validation bug. v2.0.0/v1.0.3 addressed 11 vulnerabilities from a full security audit. Here's what's protected:
+v2.0.3 fixes a critical deploy issue where `hermes update` overwrites `web/src/` files (removing Telegram initData injection and Chat/Agents tabs). The deploy script now builds from the standalone repo source and syncs all `web/src/` files. v2.0.1 addressed a critical HMAC validation bug. v2.0.0/v1.0.3 addressed 11 vulnerabilities from a full security audit. Here's what's protected:
 
 | Layer | Protection |
 |-------|-----------|

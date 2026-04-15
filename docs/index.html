@@ -133,7 +133,7 @@ td code{font-size:.8rem}
   <div class="wrap">
     <div class="hero-badge"><span class="dot"></span> Open Source</div>
     <h1>Hermes Telegram Mini App</h1>
-    <p>A terminal-style web interface for your Hermes agent. Chat, manage cron jobs, and monitor system health — all inside Telegram.</p>
+    <p>A terminal-style 10-page web dashboard for your Hermes agent. Chat, manage agents, run cron jobs, and monitor system health — all inside Telegram.</p>
     <div class="hero-actions">
       <a href="https://github.com/clawvader-tech/hermes-telegram-miniapp" class="btn btn-primary" target="_blank">
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
@@ -148,38 +148,38 @@ td code{font-size:.8rem}
 <section class="section">
   <div class="wrap">
     <div class="section-label">Features</div>
-    <h2>Everything in one file</h2>
-    <p>A single 75KB HTML file. No build step, no framework, no npm. Copy it and go.</p>
+    <h2>10 pages of agent control</h2>
+    <p>A React SPA dashboard with streaming chat, agent spawning, cron management, session browsing, and more — all from Telegram.</p>
     <div class="features">
       <div class="feature">
         <div class="feature-icon" style="background:var(--accent-bg)">💬</div>
         <h3>Streaming Chat</h3>
-        <p>Real-time SSE streaming with typing indicator, haptic feedback, and abort-on-cancel.</p>
+        <p>Real-time SSE streaming with file attachments, typing indicator, haptic feedback, and abort-on-cancel.</p>
       </div>
       <div class="feature">
-        <div class="feature-icon" style="background:var(--green-bg)">📊</div>
-        <h3>Context Bar</h3>
-        <p>Live model name, token usage progress bar, and session duration — just like the Hermes CLI.</p>
+        <div class="feature-icon" style="background:var(--green-bg)">🤖</div>
+        <h3>Agent Spawning</h3>
+        <p>Spawn independent Hermes instances in tmux. Monitor output, send messages, kill agents — all from your phone.</p>
       </div>
       <div class="feature">
         <div class="feature-icon" style="background:var(--amber-bg)">⏰</div>
         <h3>Cron Management</h3>
-        <p>View, create, pause, and trigger scheduled jobs from a dedicated tab.</p>
+        <p>View, create, pause, and trigger scheduled jobs with inline editing and delete confirmation.</p>
       </div>
       <div class="feature">
         <div class="feature-icon" style="background:rgba(168,85,247,.08)">🖥</div>
-        <h3>System Monitor</h3>
-        <p>CPU, memory, disk gauges plus process list and quick actions.</p>
+        <h3>10-Page Dashboard</h3>
+        <p>Status, Sessions, Analytics, Logs, Cron, Skills, Config, Keys — plus Chat and Agents tabs.</p>
       </div>
       <div class="feature">
         <div class="feature-icon" style="background:rgba(236,72,153,.08)">🔐</div>
-        <h3>Ed25519 Auth</h3>
-        <p>Validates Telegram initData using their published public key. No bot token needed for verification.</p>
+        <h3>Dual Auth</h3>
+        <p>HMAC-SHA256 + Ed25519 validation of Telegram initData. Bearer token fallback for browser testing.</p>
       </div>
       <div class="feature">
         <div class="feature-icon" style="background:rgba(20,184,166,.08)">⚡</div>
-        <h3>Smooth UX</h3>
-        <p>CSS containment, visualViewport handling, GPU-composited scrolls. No jank on keyboard open.</p>
+        <h3>Mobile First</h3>
+        <p>Responsive bottom nav, horizontal pill selectors, overflow-safe cards. Built for phone screens.</p>
       </div>
     </div>
   </div>
@@ -190,12 +190,12 @@ td code{font-size:.8rem}
   <div class="wrap">
     <div class="section-label">Setup</div>
     <h2>Get running in 10 minutes</h2>
-    <p>Seven steps. No build tools, no frameworks, no surprises.</p>
+    <p>Clone the repo, run deploy, set up the tunnel. That's it.</p>
 
     <ol class="steps">
       <li>
         <h3>Install Hermes Agent</h3>
-        <p>You need Hermes v0.8.0 or later.</p>
+        <p>You need Hermes v0.9.0 or later.</p>
         <pre>pip install hermes-agent</pre>
       </li>
 
@@ -210,18 +210,18 @@ td code{font-size:.8rem}
       </li>
 
       <li>
-        <h3>Install the mini app</h3>
-        <p>One file. That's it.</p>
-        <pre>mkdir -p ~/.hermes/miniapp
-cp index.html ~/.hermes/miniapp/index.html</pre>
+        <h3>Clone and deploy</h3>
+        <p>Clone the repo and run the deploy script.</p>
+        <pre>git clone https://github.com/clawvader-tech/hermes-telegram-miniapp.git
+cd hermes-telegram-miniapp
+./deploy.sh --install-hook</pre>
       </li>
 
       <li>
         <h3>Configure environment variables</h3>
         <p>Add these to <code>~/.hermes/.env</code>:</p>
-        <pre>TELEGRAM_BOT_TOKEN=your_bot_token_here
+        <pre>TELEGRAM_BOT_TOKEN=your_b...here
 TELEGRAM_OWNER_ID=your_numeric_user_id
-TELEGRAM_ALLOWED_USERS=your_numeric_user_id
 API_SERVER_KEY=$(python3 -c "import secrets; print(secrets.token_urlsafe(32))")</pre>
         <div class="callout callout-warn">
           <span class="callout-icon">⚠</span>
@@ -230,21 +230,23 @@ API_SERVER_KEY=$(python3 -c "import secrets; print(secrets.token_urlsafe(32))")<
       </li>
 
       <li>
-        <h3>Expose the gateway</h3>
-        <p>The Hermes gateway runs on port 8642. Telegram needs HTTPS to reach it.</p>
+        <h3>Expose the dashboard</h3>
+        <p>The dashboard runs on port 9119. Telegram needs HTTPS to reach it.</p>
         <pre># Quick test (URL changes on restart):
-cloudflared tunnel --url http://localhost:8642
+cloudflared tunnel --url http://localhost:9119
 
 # Production (stable URL):
 cloudflared tunnel create hermes
-cloudflared tunnel route dns hermes miniapp.yourdomain.com
+cloudflared tunnel route dns hermes dashboard.yourdomain.com
 cloudflared tunnel run hermes</pre>
       </li>
 
       <li>
         <h3>Set the bot's menu button</h3>
-        <p>In <a href="https://t.me/BotFather">@BotFather</a>, send <code>/setmenubutton</code>, pick your bot, then send your URL: <code>https://your-domain/miniapp/index.html</code></p>
-        <p>Users tap the menu button in the chat to launch the mini app.</p>
+        <p>Use the Bot API to set the menu button:</p>
+        <pre>curl -s "https://api.telegram.org/bot${TOKEN}/setChatMenuButton" \
+  -H "Content-Type: application/json" \
+  -d '{"chat_id": YOUR_ID, "menu_button": {"type": "web_app", "text": "Dashboard", "web_app": {"url": "https://your-domain/"}}}'</pre>
       </li>
     </ol>
   </div>
@@ -255,13 +257,13 @@ cloudflared tunnel run hermes</pre>
   <div class="wrap">
     <div class="section-label">Security</div>
     <h2>How authentication works</h2>
-    <p>Ed25519 signature validation — Telegram's official method. No bot token needed for verification.</p>
+    <p>Dual HMAC-SHA256 + Ed25519 signature validation — Telegram's official methods. No bot token exposed to the client.</p>
 
     <div class="auth-flow">
       <div class="auth-step">
         <div class="auth-step-num">1</div>
         <div class="auth-step-body">
-          <strong>You open the mini app</strong> in Telegram. Telegram generates a signed <code>initData</code> payload using their Ed25519 private key.
+          <strong>You open the mini app</strong> in Telegram. Telegram generates a signed <code>initData</code> payload.
         </div>
       </div>
       <div class="auth-arrow">↓</div>
@@ -275,7 +277,7 @@ cloudflared tunnel run hermes</pre>
       <div class="auth-step">
         <div class="auth-step-num">3</div>
         <div class="auth-step-body">
-          Your server verifies the <strong>Ed25519 signature</strong> using Telegram's published public key. No bot token needed — just their public key.
+          Your server validates using <strong>two methods</strong>: HMAC-SHA256 (with bot token) and Ed25519 (with Telegram's public key). Either passing is sufficient.
         </div>
       </div>
       <div class="auth-arrow">↓</div>
@@ -296,7 +298,7 @@ cloudflared tunnel run hermes</pre>
 
     <div class="callout callout-info">
       <span class="callout-icon">💡</span>
-      <div><strong>Why not HMAC?</strong> The HMAC-SHA256 method (using the bot token) has encoding edge cases that cause validation failures in practice. Ed25519 uses Telegram's published public key — no encoding ambiguities, no bot token needed, and it just works.</div>
+      <div><strong>Two methods, zero ambiguity.</strong> HMAC-SHA256 is Telegram's primary method (uses bot token). Ed25519 is their third-party method (uses public key). Both are checked — if one has encoding edge cases, the other catches it.</div>
     </div>
   </div>
 </section>
@@ -306,17 +308,18 @@ cloudflared tunnel run hermes</pre>
   <div class="wrap">
     <div class="section-label">API</div>
     <h2>Endpoints used</h2>
-    <p>The mini app talks to the Hermes gateway API.</p>
+    <p>The mini app talks to the Hermes dashboard API on port 9119.</p>
     <div class="table-wrap">
       <table>
         <thead><tr><th>Endpoint</th><th>Auth</th><th>Purpose</th></tr></thead>
         <tbody>
-          <tr><td><code>GET /health</code></td><td>None</td><td>System health (CPU, memory, uptime)</td></tr>
-          <tr><td><code>GET /api/model-info</code></td><td>Yes</td><td>Active model, provider, context length</td></tr>
-          <tr><td><code>GET /api/session-usage</code></td><td>Yes</td><td>Cumulative token usage</td></tr>
-          <tr><td><code>GET /api/jobs</code></td><td>Yes</td><td>List cron jobs</td></tr>
-          <tr><td><code>POST /api/command</code></td><td>Yes</td><td>Execute a slash command</td></tr>
+          <tr><td><code>GET /api/status</code></td><td>None</td><td>Version, gateway state, active sessions</td></tr>
+          <tr><td><code>GET /api/system-health</code></td><td>None</td><td>System health (CPU, memory, uptime)</td></tr>
           <tr><td><code>POST /v1/chat/completions</code></td><td>Yes</td><td>Streaming chat (SSE)</td></tr>
+          <tr><td><code>GET /api/agents</code></td><td>None</td><td>List spawned agents</td></tr>
+          <tr><td><code>POST /api/agents</code></td><td>Yes</td><td>Spawn agent in tmux</td></tr>
+          <tr><td><code>GET /api/cron/jobs</code></td><td>None</td><td>List cron jobs</td></tr>
+          <tr><td><code>POST /api/cron/jobs</code></td><td>Yes</td><td>Create cron job</td></tr>
         </tbody>
       </table>
     </div>
@@ -347,7 +350,7 @@ cloudflared tunnel run hermes</pre>
 
     <div class="ts-item">
       <h4>❌ initData keeps expiring</h4>
-      <p>initData is valid for 24 hours. If the app stays open overnight, close and reopen it to get fresh data.</p>
+      <p>initData freshness is checked with a 5-minute window. If the app stays open, close and reopen it to get fresh data from Telegram.</p>
     </div>
 
     <div class="ts-item">
@@ -371,19 +374,21 @@ cloudflared tunnel run hermes</pre>
 
     <div class="diagram" style="text-align:center;line-height:2.4">
       <strong>Telegram Client</strong>
-      <br><span class="comment">├─</span> Mini App (<span class="highlight">index.html</span> — single file, 75KB)
-      <br><span class="comment">├─</span> Sends <span class="highlight">Ed25519-signed initData</span>
+      <br><span class="comment">├─</span> Mini App (<span class="highlight">React SPA</span> — Vite + React 19 + TypeScript)
+      <br><span class="comment">├─</span> Sends <span class="highlight">HMAC-SHA256 + Ed25519 signed initData</span>
+      <br><span class="comment">├─</span> 10 pages: Chat, Status, Agents, Sessions, Analytics, Logs, Cron, Skills, Config, Keys
       <br><span class="comment">└─</span> Falls back to Bearer token for browser testing
       <br>
       <br><span class="comment">▼</span>
-      <br><strong>HTTPS Reverse Proxy</strong> <span class="comment">(Cloudflare Tunnel, nginx, Caddy...)</span>
+      <br><strong>HTTPS Reverse Proxy</strong> <span class="comment">(Cloudflare Tunnel — your domain)</span>
       <br>
       <br><span class="comment">▼</span>
-      <br><strong>Hermes Gateway</strong> <span class="comment">(port 8642)</span>
-      <br><span class="comment">├─</span> Ed25519 signature validation
+      <br><strong>FastAPI Dashboard</strong> <span class="comment">(port 9119)</span>
+      <br><span class="comment">├─</span> Dual HMAC-SHA256 + Ed25519 signature validation
       <br><span class="comment">├─</span> Owner-only access control
-      <br><span class="comment">├─</span> Serves mini app from <code>~/.hermes/miniapp/</code>
-      <br><span class="comment">└─</span> SSE streaming for chat responses
+      <br><span class="comment">├─</span> Streaming chat proxy → Hermes gateway
+      <br><span class="comment">├─</span> Agent spawning in tmux
+      <br><span class="comment">└─</span> Serves built SPA from <code>hermes_cli/web_dist/</code>
     </div>
   </div>
 </section>
