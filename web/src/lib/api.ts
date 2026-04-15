@@ -227,6 +227,84 @@ export const api = {
 
   // Processes
   getProcesses: () => fetchJSON<{ processes: ProcessInfo[] }>("/api/processes"),
+
+  // Streaming chat via gateway /v1/chat/completions
+  streamChat: async function* (
+    messages: { role: string; content: string }[],
+    opts?: { sessionId?: string; onSessionId?: (id: string) => void },
+  ): AsyncGenerator<string> {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+
+    // Auth: try session token first, fall back to Telegram initData
+    try {
+      const token = await getSessionToken();
+      headers["Authorization"] = `Bearer ${token}`;
+    } catch {}
+    const tg = _tgHeaders();
+    Object.assign(headers, tg);
+
+    if (opts?.sessionId) {
+      headers["X-Hermes-Session-Id"] = opts.sessionId;
+    }
+
+    const res = await fetch("/v1/chat/completions", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        model: "hermes-agent",
+        messages,
+        stream: true,
+      }),
+    });
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => res.statusText);
+      throw new Error(`${res.status}: ${text}`);
+    }
+
+    const reader = res.body?.getReader();
+    if (!reader) throw new Error("No response body");
+
+    const decoder = new TextDecoder();
+    let buf = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+
+      const lines = buf.split("\n");
+      buf = lines.pop() || "";
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+
+        // Custom session event from proxy
+        if (trimmed.startsWith("event: session")) continue;
+        if (trimmed.startsWith("data: ") && !trimmed.startsWith("data: {")) {
+          const payload = trimmed.slice(6);
+          if (payload === "[DONE]") return;
+          // Non-JSON data line — check if it's a session ID
+          if (payload.length > 10 && !payload.startsWith("{")) {
+            if (opts?.onSessionId) opts.onSessionId(payload);
+            continue;
+          }
+        }
+
+        if (!trimmed.startsWith("data: ")) continue;
+        const payload = trimmed.slice(6);
+        if (payload === "[DONE]") return;
+        try {
+          const chunk = JSON.parse(payload);
+          const delta = chunk.choices?.[0]?.delta?.content;
+          if (delta) yield delta;
+        } catch {}
+      }
+    }
+  },
 };
 
 export interface PlatformStatus {

@@ -1,8 +1,9 @@
-import { useEffect, useState, useRef, useCallback } from "react";
-import { Send, StopCircle, Paperclip, X, Loader2 } from "lucide-react";
+import { useEffect, useState, useRef } from "react";
+import { Send, StopCircle, Paperclip, X } from "lucide-react";
 import { api } from "@/lib/api";
 import type { ModelInfo } from "@/lib/api";
 import { Markdown } from "@/components/Markdown";
+import { DnaLoader } from "@/components/DnaLoader";
 import { Button } from "@/components/ui/button";
 
 interface ChatMsg {
@@ -10,47 +11,24 @@ interface ChatMsg {
   content: string;
 }
 
-const CHAT_AGENT = "chat";
-const POLL_MS = 2000;
-
 export default function ChatPage() {
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
-  const [agentReady, setAgentReady] = useState(false);
-  const [agentSpawning, setAgentSpawning] = useState(false);
   const [modelInfo, setModelInfo] = useState<ModelInfo | null>(null);
   const [attachedFile, setAttachedFile] = useState<{ name: string; dataUrl: string } | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const lastOutputLen = useRef(0);
-  const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
-  const agentReadyRef = useRef(false);
-  const streamingRef = useRef(false);
+  const abortRef = useRef<AbortController | null>(null);
+  const sessionIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     api.getModelInfo().then(setModelInfo).catch(() => {});
-    // Check if chat agent already exists
-    api.getAgents().then(({ agents }) => {
-      const chat = agents.find((a) => a.name === CHAT_AGENT);
-      if (chat && chat.status === "running") {
-        agentReadyRef.current = true;
-        setAgentReady(true);
-        startPolling();
-      }
-    }).catch(() => {});
-    return () => stopPolling();
   }, []);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
-
-  const scrollToBottom = useCallback(() => {
-    requestAnimationFrame(() => {
-      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-    });
-  }, []);
 
   const handleFileAttach = () => {
     const el = document.createElement("input");
@@ -68,121 +46,32 @@ export default function ChatPage() {
     el.click();
   };
 
-  const stopPolling = () => {
-    if (pollTimer.current) {
-      clearInterval(pollTimer.current);
-      pollTimer.current = null;
-    }
-  };
-
-  const startPolling = () => {
-    stopPolling();
-    pollTimer.current = setInterval(pollOutput, POLL_MS);
-  };
-
-  const pollOutput = async () => {
-    try {
-      const info = await api.getAgent(CHAT_AGENT);
-      if (!info.output) return;
-
-      const output: string = info.output;
-      // Only process new content since last poll
-      if (output.length <= lastOutputLen.current) return;
-
-      const newContent = output.slice(lastOutputLen.current);
-      lastOutputLen.current = output.length;
-
-      // Skip empty/whitespace-only updates
-      const trimmed = newContent.trim();
-      if (!trimmed) return;
-
-      // Append to last assistant message or create new one
-      setMessages((prev) => {
-        const last = prev[prev.length - 1];
-        if (last && last.role === "assistant") {
-          // Append to existing
-          return [
-            ...prev.slice(0, -1),
-            { ...last, content: last.content + trimmed },
-          ];
-        }
-        // New assistant message
-        return [...prev, { role: "assistant", content: trimmed }];
-      });
-      scrollToBottom();
-
-      // Detect when agent is done responding (hermes shows prompt)
-      // The hermes prompt contains a colored symbol like ▋ or similar
-      if (streamingRef.current && /\n[^|\n]*[>$#]\s*$/.test(output.slice(-50))) {
-        streamingRef.current = false;
-        setStreaming(false);
-      }
-    } catch {
-      // Agent might be dead
-      agentReadyRef.current = false;
-      setAgentReady(false);
-      stopPolling();
-    }
-  };
-
-  const ensureAgent = async (firstMessage: string): Promise<boolean> => {
-    if (agentReadyRef.current) return true;
-
-    setAgentSpawning(true);
-    try {
-      // Spawn the chat agent with the first message as prompt
-      await api.spawnAgent({
-        prompt: firstMessage,
-        name: CHAT_AGENT,
-        mode: "interactive",
-      });
-
-      // Wait a moment for tmux to boot, then start polling
-      await new Promise((r) => setTimeout(r, 3000));
-      lastOutputLen.current = 0;
-      agentReadyRef.current = true;
-      setAgentReady(true);
-      startPolling();
-      return true;
-    } catch (e: any) {
-      // Check if 409 (already exists) — that's fine
-      if (e.message?.includes("409")) {
-        agentReadyRef.current = true;
-        setAgentReady(true);
-        startPolling();
-        return true;
-      }
-      setMessages((prev) => [
-        ...prev,
-        { role: "system", content: `Failed to spawn agent: ${e.message}` },
-      ]);
-      return false;
-    } finally {
-      setAgentSpawning(false);
-    }
+  const abortStream = () => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setStreaming(false);
   };
 
   const send = async () => {
     const text = input.trim();
     if (!text && !attachedFile) return;
-    if (streaming || agentSpawning) return;
+    if (streaming) return;
 
     const displayText = text || "(image)";
     setInput("");
-    streamingRef.current = true;
     setStreaming(true);
+
+    // Build the message content
+    let content = text;
+    if (attachedFile && text) {
+      content = `${text}\n[Attached image: ${attachedFile.name}]`;
+    } else if (attachedFile) {
+      content = `[Attached image: ${attachedFile.name}]`;
+    }
+    setAttachedFile(null);
 
     // Show user message
     setMessages((prev) => [...prev, { role: "user", content: displayText }]);
-    setAttachedFile(null);
-
-    // Build the message to send to agent
-    let agentMsg = text;
-    if (attachedFile && text) {
-      agentMsg = `${text}\n[Attached image: ${attachedFile.name}]`;
-    } else if (attachedFile) {
-      agentMsg = `[Attached image: ${attachedFile.name}]`;
-    }
 
     // Slash commands — proxy to command endpoint
     if (text.startsWith("/")) {
@@ -205,34 +94,51 @@ export default function ChatPage() {
       return;
     }
 
-    // Ensure agent is running
-    const ok = await ensureAgent(agentMsg);
-    if (!ok) {
-      setStreaming(false);
-      return;
-    }
+    // Build message history for the API
+    // Send last N messages for context (plus the new one)
+    const history = messages
+      .filter((m) => m.role === "user" || m.role === "assistant")
+      .slice(-20)
+      .map((m) => ({ role: m.role, content: m.content }));
+    history.push({ role: "user", content });
 
-    // If we just spawned with this message as prompt, it was already sent
-    if (!agentReadyRef.current || messages.length === 0) {
-      // First message was sent as the spawn prompt, just wait for output
-      return;
-    }
+    // Stream response via gateway API
+    const controller = new AbortController();
+    abortRef.current = controller;
+    let assistantContent = "";
 
-    // Send message to existing agent
+    // Create placeholder assistant message
+    setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+
     try {
-      await api.sendAgentMessage(CHAT_AGENT, agentMsg);
+      for await (const delta of api.streamChat(history, {
+        sessionId: sessionIdRef.current || undefined,
+        onSessionId: (id) => { sessionIdRef.current = id; },
+      })) {
+        if (controller.signal.aborted) break;
+        assistantContent += delta;
+        setMessages((prev) => {
+          const updated = [...prev];
+          updated[updated.length - 1] = { role: "assistant", content: assistantContent };
+          return updated;
+        });
+      }
     } catch (e: any) {
-      setMessages((prev) => [
-        ...prev,
-        { role: "system", content: `Send failed: ${e.message}` },
-      ]);
-      setStreaming(false);
+      if (!controller.signal.aborted) {
+        setMessages((prev) => {
+          const updated = [...prev];
+          updated[updated.length - 1] = {
+            role: "system",
+            content: `Error: ${e.message}`,
+          };
+          return updated;
+        });
+      }
     }
-  };
 
-  const abortStream = () => {
-    // Can't truly abort a tmux agent, but we can stop showing loading state
+    abortRef.current = null;
     setStreaming(false);
+    inputRef.current?.focus();
   };
 
   const handleKey = (e: React.KeyboardEvent) => {
@@ -249,9 +155,7 @@ export default function ChatPage() {
         <span className="font-medium">{modelInfo?.model_short || "—"}</span>
         {modelInfo?.provider && <span className="opacity-60">via {modelInfo.provider}</span>}
         <span className="opacity-40">|</span>
-        <span className={agentReady ? "text-green-500" : agentSpawning ? "text-yellow-500" : "text-muted-foreground"}>
-          {agentReady ? "● Connected" : agentSpawning ? "◌ Spawning..." : "○ No agent"}
-        </span>
+        <span className="text-green-500">● Ready</span>
       </div>
 
       {/* Messages */}
@@ -259,7 +163,7 @@ export default function ChatPage() {
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
             <p className="text-lg font-display mb-2">Hermes Agent</p>
-            <p className="text-sm opacity-60">Send a message to start a tmux session</p>
+            <p className="text-sm opacity-60">Send a message to start chatting</p>
           </div>
         )}
         {messages.map((msg, i) => (
@@ -277,9 +181,15 @@ export default function ChatPage() {
             >
               {msg.role === "assistant" ? (
                 <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap break-words">
-                  <Markdown content={msg.content} />
-                  {streaming && i === messages.length - 1 && (
-                    <span className="inline-block w-1.5 h-4 bg-foreground/70 animate-pulse ml-0.5 align-text-bottom" />
+                  {streaming && i === messages.length - 1 && !msg.content ? (
+                    <DnaLoader />
+                  ) : (
+                    <>
+                      <Markdown content={msg.content} />
+                      {streaming && i === messages.length - 1 && (
+                        <span className="inline-block w-1.5 h-4 bg-foreground/70 animate-pulse ml-0.5 align-text-bottom" />
+                      )}
+                    </>
                   )}
                 </div>
               ) : (
@@ -288,14 +198,6 @@ export default function ChatPage() {
             </div>
           </div>
         ))}
-        {agentSpawning && (
-          <div className="flex justify-start">
-            <div className="bg-secondary text-secondary-foreground rounded-lg px-3 py-2 flex items-center gap-2 text-sm">
-              <Loader2 className="h-3 w-3 animate-spin" />
-              Spawning agent session...
-            </div>
-          </div>
-        )}
         <div ref={bottomRef} />
       </div>
 
@@ -318,19 +220,19 @@ export default function ChatPage() {
         <textarea
           ref={inputRef}
           className="flex-1 resize-none rounded-md border border-input bg-transparent px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring min-h-[38px] max-h-[120px]"
-          placeholder={agentReady ? "Message Hermes..." : "Send a message to spawn agent..."}
+          placeholder="Message Hermes..."
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKey}
           rows={1}
-          disabled={streaming || agentSpawning}
+          disabled={streaming}
         />
         {streaming ? (
           <Button variant="destructive" size="icon" className="shrink-0 h-9 w-9" onClick={abortStream}>
             <StopCircle className="h-4 w-4" />
           </Button>
         ) : (
-          <Button size="icon" className="shrink-0 h-9 w-9" onClick={send} disabled={(!input.trim() && !attachedFile) || agentSpawning}>
+          <Button size="icon" className="shrink-0 h-9 w-9" onClick={send} disabled={!input.trim() && !attachedFile}>
             <Send className="h-4 w-4" />
           </Button>
         )}

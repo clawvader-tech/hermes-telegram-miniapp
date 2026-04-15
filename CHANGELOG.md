@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.4] — 2026-04-15
+
+### Changed
+
+**Chat: replaced tmux polling with direct Gateway API SSE streaming** — the Chat page no longer spawns a tmux agent session and polls for output. Instead, it streams directly via `/v1/chat/completions` (OpenAI-compatible SSE endpoint), matching the Gateway API that the Hermes CLI and Telegram bot already use.
+
+**Benefits:**
+- **Instant response** — no 2-second polling delay, no agent spawn overhead
+- **True abort** — AbortController kills the fetch, not just stops showing output
+- **Session continuity** — `X-Hermes-Session-Id` header maintains conversation context across messages
+- **Cleaner state** — no agent lifecycle management (spawn, poll, cleanup)
+
+### Added
+
+- **`api.streamChat()`** — async generator that yields SSE delta tokens from `/v1/chat/completions`. Handles auth (session token + Telegram initData), session ID tracking, and abort signals.
+- **DnaLoader component** — animated DNA helix loading indicator shown while waiting for the first streaming chunk (replaces the generic spinner).
+- **Architecture diagram** — `docs/miniapp-v2-architecture.html` — standalone SVG diagram showing all 4 layers (External → Auth → Server → Backend) plus deploy pipeline.
+
+### Removed
+
+- tmux agent spawn/poll/cleanup logic from ChatPage (agent spawning still available on the Agents page for power users)
+
 ## [2.0.3] — 2026-04-15
 
 ### Fixed

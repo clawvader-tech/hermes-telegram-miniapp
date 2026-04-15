@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Telegram Mini App v2.0.3 Architecture</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'JetBrains Mono', monospace;
+      background: #020617;
+      min-height: 100vh;
+      padding: 2rem;
+      color: white;
+    }
+    .container { max-width: 1200px; margin: 0 auto; }
+    .header { margin-bottom: 2rem; }
+    .header-row { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem; }
+    .pulse-dot {
+      width: 12px; height: 12px; background: #22d3ee; border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    h1 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.025em; }
+    .subtitle { color: #94a3b8; font-size: 0.875rem; margin-left: 1.75rem; }
+    .diagram-container {
+      background: rgba(15, 23, 42, 0.5); border-radius: 1rem;
+      border: 1px solid #1e293b; padding: 1.5rem; overflow-x: auto;
+    }
+    svg { width: 100%; min-width: 900px; display: block; }
+    .cards {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem; margin-top: 2rem;
+    }
+    .card {
+      background: rgba(15, 23, 42, 0.5); border-radius: 0.75rem;
+      border: 1px solid #1e293b; padding: 1.25rem;
+    }
+    .card-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; }
+    .card-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .card-dot.cyan { background: #22d3ee; }
+    .card-dot.emerald { background: #34d399; }
+    .card-dot.violet { background: #a78bfa; }
+    .card-dot.amber { background: #fbbf24; }
+    .card-dot.rose { background: #fb7185; }
+    .card h3 { font-size: 0.875rem; font-weight: 600; }
+    .card ul { list-style: none; color: #94a3b8; font-size: 0.75rem; }
+    .card li { margin-bottom: 0.375rem; }
+    .footer { text-align: center; margin-top: 1.5rem; color: #475569; font-size: 0.75rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="header-row">
+        <div class="pulse-dot"></div>
+        <h1>Telegram Mini App v2.0.3 Architecture</h1>
+      </div>
+      <p class="subtitle">FastAPI + React SPA — 10-page mobile dashboard with dual Ed25519/HMAC Telegram auth</p>
+    </div>
+
+    <div class="diagram-container">
+      <svg viewBox="0 0 1020 880">
+        <defs>
+          <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#64748b" />
+          </marker>
+          <marker id="arrowhead-cyan" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#22d3ee" />
+          </marker>
+          <marker id="arrowhead-rose" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#fb7185" />
+          </marker>
+          <marker id="arrowhead-amber" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#fbbf24" />
+          </marker>
+          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" stroke-width="0.5"/>
+          </pattern>
+        </defs>
+
+        <!-- Background Grid -->
+        <rect width="100%" height="100%" fill="url(#grid)" />
+
+        <!-- ===================== ARROWS (drawn first, behind boxes) ===================== -->
+
+        <!-- Phone → Telegram Servers -->
+        <line x1="155" y1="75" x2="310" y2="75" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <text x="232" y="69" fill="#94a3b8" font-size="8" text-anchor="middle">WebView</text>
+
+        <!-- Telegram → Cloudflare -->
+        <line x1="440" y1="75" x2="560" y2="75" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <text x="500" y="69" fill="#94a3b8" font-size="8" text-anchor="middle">HTTPS</text>
+
+        <!-- Cloudflare → Auth Middleware -->
+        <line x1="690" y1="90" x2="690" y2="158" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <text x="705" y="130" fill="#fbbf24" font-size="8">tunnel</text>
+
+        <!-- Auth → FastAPI -->
+        <line x1="690" y1="220" x2="690" y2="278" stroke="#fb7185" stroke-width="1.5" stroke-dasharray="5,5" marker-end="url(#arrowhead-rose)"/>
+        <text x="705" y="254" fill="#fb7185" font-size="8">validate</text>
+
+        <!-- FastAPI → React SPA (serves static) -->
+        <line x1="580" y1="340" x2="320" y2="340" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arrowhead-cyan)"/>
+        <text x="450" y="334" fill="#22d3ee" font-size="8" text-anchor="middle">web_dist/</text>
+
+        <!-- FastAPI → Gateway API (chat SSE) -->
+        <line x1="690" y1="360" x2="690" y2="458" stroke="#34d399" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <text x="705" y="414" fill="#34d399" font-size="8">SSE</text>
+
+        <!-- FastAPI → tmux agents -->
+        <line x1="790" y1="360" x2="900" y2="458" stroke="#34d399" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <text x="870" y="404" fill="#34d399" font-size="8">spawn</text>
+
+        <!-- FastAPI → Local Vision -->
+        <line x1="600" y1="360" x2="340" y2="498" stroke="#34d399" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <text x="448" y="420" fill="#34d399" font-size="8">vision</text>
+
+        <!-- FastAPI → Local OCR -->
+        <line x1="640" y1="360" x2="510" y2="498" stroke="#34d399" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <text x="558" y="438" fill="#34d399" font-size="8">ocr</text>
+
+        <!-- Gateway → Hermes State -->
+        <line x1="690" y1="530" x2="690" y2="608" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <text x="705" y="574" fill="#a78bfa" font-size="8">read/write</text>
+
+        <!-- Deploy pipeline arrows -->
+        <line x1="180" y1="530" x2="180" y2="608" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#arrowhead-amber)"/>
+        <text x="195" y="574" fill="#fbbf24" font-size="8">deploy.sh</text>
+
+        <line x1="250" y1="648" x2="570" y2="310" stroke="#fbbf24" stroke-width="1.5" stroke-dasharray="5,5" marker-end="url(#arrowhead-amber)"/>
+        <text x="380" y="478" fill="#fbbf24" font-size="8" text-anchor="middle">build + sync</text>
+
+        <!-- ===================== LAYER 1: EXTERNAL ===================== -->
+
+        <!-- Phone -->
+        <rect x="30" y="50" width="120" height="55" rx="6" fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1.5"/>
+        <text x="90" y="73" fill="white" font-size="11" font-weight="600" text-anchor="middle">Phone</text>
+        <text x="90" y="89" fill="#94a3b8" font-size="9" text-anchor="middle">Telegram WebView</text>
+
+        <!-- Telegram Servers -->
+        <rect x="320" y="50" width="120" height="55" rx="6" fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1.5"/>
+        <text x="380" y="73" fill="white" font-size="11" font-weight="600" text-anchor="middle">Telegram</text>
+        <text x="380" y="89" fill="#94a3b8" font-size="9" text-anchor="middle">Bot API Servers</text>
+
+        <!-- Cloudflare Tunnel -->
+        <rect x="570" y="50" width="120" height="55" rx="6" fill="rgba(120, 53, 15, 0.3)" stroke="#fbbf24" stroke-width="1.5"/>
+        <text x="630" y="73" fill="white" font-size="11" font-weight="600" text-anchor="middle">Cloudflare</text>
+        <text x="630" y="89" fill="#fbbf24" font-size="9" text-anchor="middle">Tunnel → :9119</text>
+
+        <!-- ===================== LAYER 2: AUTH ===================== -->
+
+        <!-- Auth Middleware -->
+        <rect x="570" y="160" width="240" height="55" rx="6" fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185" stroke-width="1.5"/>
+        <text x="690" y="183" fill="white" font-size="11" font-weight="600" text-anchor="middle">Auth Middleware</text>
+        <text x="690" y="199" fill="#fb7185" font-size="9" text-anchor="middle">Ed25519 + HMAC-SHA256 + Bearer</text>
+
+        <!-- ===================== LAYER 3: HERMES SERVER ===================== -->
+
+        <!-- Hermes Server boundary -->
+        <rect x="170" y="265" width="780" height="115" rx="12" fill="rgba(6, 78, 59, 0.08)" stroke="#34d399" stroke-width="1" stroke-dasharray="8,4"/>
+        <text x="182" y="283" fill="#34d399" font-size="10" font-weight="600">localhost:9119</text>
+
+        <!-- React SPA -->
+        <rect x="190" y="300" width="240" height="60" rx="6" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="310" y="322" fill="white" font-size="11" font-weight="600" text-anchor="middle">React SPA</text>
+        <text x="310" y="338" fill="#22d3ee" font-size="8" text-anchor="middle">Chat · Status · Agents · Sessions · Analytics</text>
+        <text x="310" y="350" fill="#94a3b8" font-size="8" text-anchor="middle">Logs · Cron · Skills · Config · Keys</text>
+
+        <!-- FastAPI Web Server -->
+        <rect x="580" y="290" width="220" height="70" rx="6" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="690" y="316" fill="white" font-size="11" font-weight="600" text-anchor="middle">FastAPI Web Server</text>
+        <text x="690" y="332" fill="#94a3b8" font-size="9" text-anchor="middle">web_server.py (~2465 lines)</text>
+        <text x="690" y="348" fill="#34d399" font-size="8" text-anchor="middle">17 write endpoints · 10 pages · SSE</text>
+
+        <!-- ===================== LAYER 4: BACKEND SERVICES ===================== -->
+
+        <!-- Backend boundary -->
+        <rect x="170" y="460" width="780" height="190" rx="12" fill="rgba(6, 78, 59, 0.05)" stroke="#34d399" stroke-width="1" stroke-dasharray="8,4"/>
+        <text x="182" y="478" fill="#34d399" font-size="10" font-weight="600">Backend Services</text>
+
+        <!-- Local Vision -->
+        <rect x="200" y="500" width="120" height="55" rx="6" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="260" y="522" fill="white" font-size="11" font-weight="600" text-anchor="middle">Local Vision</text>
+        <text x="260" y="538" fill="#94a3b8" font-size="9" text-anchor="middle">LFM2-VL :8080</text>
+
+        <!-- Local OCR -->
+        <rect x="370" y="500" width="120" height="55" rx="6" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="430" y="522" fill="white" font-size="11" font-weight="600" text-anchor="middle">Local OCR</text>
+        <text x="430" y="538" fill="#94a3b8" font-size="9" text-anchor="middle">GLM-OCR :8081</text>
+
+        <!-- Gateway API -->
+        <rect x="580" y="490" width="220" height="55" rx="6" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="690" y="512" fill="white" font-size="11" font-weight="600" text-anchor="middle">Hermes Gateway API</text>
+        <text x="690" y="528" fill="#94a3b8" font-size="9" text-anchor="middle">/v1/chat/completions :8642</text>
+
+        <!-- tmux Agents -->
+        <rect x="830" y="490" width="100" height="55" rx="6" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="880" y="512" fill="white" font-size="11" font-weight="600" text-anchor="middle">tmux</text>
+        <text x="880" y="528" fill="#94a3b8" font-size="9" text-anchor="middle">max 5 agents</text>
+
+        <!-- Hermes State -->
+        <rect x="580" y="610" width="220" height="55" rx="6" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="690" y="633" fill="white" font-size="11" font-weight="600" text-anchor="middle">Hermes State</text>
+        <text x="690" y="649" fill="#94a3b8" font-size="9" text-anchor="middle">SQLite · config.yaml · .env</text>
+
+        <!-- ===================== DEPLOY PIPELINE ===================== -->
+
+        <!-- Deploy boundary -->
+        <rect x="30" y="460" width="130" height="220" rx="12" fill="rgba(120, 53, 15, 0.05)" stroke="#fbbf24" stroke-width="1" stroke-dasharray="8,4"/>
+        <text x="42" y="478" fill="#fbbf24" font-size="10" font-weight="600">Deploy Pipeline</text>
+
+        <!-- Standalone Repo -->
+        <rect x="45" y="500" width="100" height="55" rx="6" fill="rgba(120, 53, 15, 0.3)" stroke="#fbbf24" stroke-width="1.5"/>
+        <text x="95" y="522" fill="white" font-size="11" font-weight="600" text-anchor="middle">Standalone</text>
+        <text x="95" y="538" fill="#94a3b8" font-size="9" text-anchor="middle">Repo</text>
+
+        <!-- deploy.sh -->
+        <rect x="45" y="610" width="100" height="55" rx="6" fill="rgba(120, 53, 15, 0.3)" stroke="#fbbf24" stroke-width="1.5"/>
+        <text x="95" y="633" fill="white" font-size="11" font-weight="600" text-anchor="middle">deploy.sh</text>
+        <text x="95" y="649" fill="#fbbf24" font-size="8" text-anchor="middle">+ post-merge hook</text>
+
+        <!-- ===================== LEGEND ===================== -->
+
+        <text x="830" y="690" fill="white" font-size="10" font-weight="600">Legend</text>
+
+        <rect x="830" y="702" width="16" height="10" rx="2" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="1"/>
+        <text x="852" y="710" fill="#94a3b8" font-size="8">Frontend (React SPA)</text>
+
+        <rect x="830" y="718" width="16" height="10" rx="2" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1"/>
+        <text x="852" y="726" fill="#94a3b8" font-size="8">Backend (FastAPI/Services)</text>
+
+        <rect x="830" y="734" width="16" height="10" rx="2" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1"/>
+        <text x="852" y="742" fill="#94a3b8" font-size="8">Database (SQLite/Config)</text>
+
+        <rect x="830" y="750" width="16" height="10" rx="2" fill="rgba(120, 53, 15, 0.3)" stroke="#fbbf24" stroke-width="1"/>
+        <text x="852" y="758" fill="#94a3b8" font-size="8">Cloud / Deploy</text>
+
+        <rect x="830" y="766" width="16" height="10" rx="2" fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185" stroke-width="1"/>
+        <text x="852" y="774" fill="#94a3b8" font-size="8">Security (Auth)</text>
+
+        <rect x="830" y="782" width="16" height="10" rx="2" fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1"/>
+        <text x="852" y="790" fill="#94a3b8" font-size="8">External</text>
+
+        <line x1="830" y1="802" x2="846" y2="802" stroke="#fb7185" stroke-width="1" stroke-dasharray="3,3"/>
+        <text x="852" y="806" fill="#94a3b8" font-size="8">Auth / Deploy Flow</text>
+
+      </svg>
+    </div>
+
+    <!-- Info Cards -->
+    <div class="cards">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot rose"></div>
+          <h3>Authentication</h3>
+        </div>
+        <ul>
+          <li>&#8226; Dual Ed25519 (primary) + HMAC-SHA256 (fallback)</li>
+          <li>&#8226; Bearer session tokens via /api/auth/session-token</li>
+          <li>&#8226; CORS restricted to known origins</li>
+          <li>&#8226; Per-IP rate limiting (10 fails/60s → 15min lockout)</li>
+          <li>&#8226; CSP headers, XSS sanitization, SRI</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot cyan"></div>
+          <h3>10-Page Dashboard</h3>
+        </div>
+        <ul>
+          <li>&#8226; Chat — SSE streaming, file attachments, abort</li>
+          <li>&#8226; Agents — tmux spawn/kill/message (max 5)</li>
+          <li>&#8226; Cron — full CRUD with pause/trigger</li>
+          <li>&#8226; Status, Sessions, Analytics, Logs</li>
+          <li>&#8226; Skills, Config, Keys — full management</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot amber"></div>
+          <h3>Deploy Pipeline</h3>
+        </div>
+        <ul>
+          <li>&#8226; Standalone repo → deploy.sh → hermes-agent</li>
+          <li>&#8226; Post-merge git hook auto-redeploys</li>
+          <li>&#8226; Builds from source, syncs 25+ web/src/ files</li>
+          <li>&#8226; Pre-flight check: verifies TG initData in built JS</li>
+          <li>&#8226; assume-unchanged on web_server.py</li>
+        </ul>
+      </div>
+    </div>
+
+    <p class="footer">
+      Telegram Mini App v2.0.3 &bull; github.com/clawvader-tech/hermes-telegram-miniapp &bull; MIT License
+    </p>
+  </div>
+</body>
+</html>
