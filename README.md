@@ -270,6 +270,8 @@ This should not happen if the post-merge hook is installed. If it does:
 
 ## Architecture
 
+> **[View the interactive architecture diagram →](docs/miniapp-v2-architecture.html)**
+
 ```
 Telegram Client
     │
@@ -307,7 +309,7 @@ Optional Local Models (CPU)
 
 ## Security
 
-v2.0.3 fixes a critical deploy issue where `hermes update` overwrites `web/src/` files (removing Telegram initData injection and Chat/Agents tabs). The deploy script now builds from the standalone repo source and syncs all `web/src/` files. v2.0.1 addressed a critical HMAC validation bug. v2.0.0/v1.0.3 addressed 11 vulnerabilities from a full security audit. Here's what's protected:
+v2.0.4 replaces tmux-based chat polling with direct Gateway API SSE streaming for instant responses and true abort support. v2.0.3 fixes a critical deploy issue where `hermes update` overwrites `web/src/` files (removing Telegram initData injection and Chat/Agents tabs). The deploy script now builds from the standalone repo source and syncs all `web/src/` files. v2.0.1 addressed a critical HMAC validation bug. v2.0.0/v1.0.3 addressed 11 vulnerabilities from a full security audit. Here's what's protected:
 
 | Layer | Protection |
 |-------|-----------|
