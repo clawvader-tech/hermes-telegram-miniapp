@@ -386,9 +386,16 @@ cloudflared tunnel run hermes</pre>
       <br><strong>FastAPI Dashboard</strong> <span class="comment">(port 9119)</span>
       <br><span class="comment">├─</span> Dual HMAC-SHA256 + Ed25519 signature validation
       <br><span class="comment">├─</span> Owner-only access control
-      <br><span class="comment">├─</span> Streaming chat proxy → Hermes gateway
-      <br><span class="comment">├─</span> Agent spawning in tmux
+      <br><span class="comment">├─</span> SSE streaming chat → Hermes gateway /v1/chat/completions
+      <br><span class="comment">├─</span> Agent spawning in tmux (Agents page)
       <br><span class="comment">└─</span> Serves built SPA from <code>hermes_cli/web_dist/</code>
+    </div>
+
+    <div style="text-align:center;margin-top:2rem">
+      <a href="miniapp-v2-architecture.html" target="_blank">
+        <img src="miniapp-v2-architecture.png" alt="Architecture diagram — v2.0.4 SSE streaming flow" style="max-width:100%;border-radius:12px;border:1px solid var(--border);cursor:pointer" />
+      </a>
+      <p style="margin-top:0.75rem;color:var(--text3);font-size:0.8rem">Click for the interactive SVG version</p>
     </div>
   </div>
 </section>
