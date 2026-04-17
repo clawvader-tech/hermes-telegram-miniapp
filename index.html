@@ -1128,9 +1128,9 @@ async function submitToken() {
     });
     if (r.ok) {
       apiToken = token;
-      // Store in CloudStorage (Telegram-native) and localStorage (browser fallback)
+      // Store in Telegram CloudStorage only — sessionStorage is intentionally
+      // NOT used here because it is readable by any same-origin JS (XSS risk).
       if (CS) { try { await CS.setItem('hermes_api_token', token); } catch (_) {} }
-      try { sessionStorage.setItem('hermes_api_token', token); } catch (_) {}
       hideTokenGate();
       initAfterAuth();
     } else {
@@ -1937,7 +1937,7 @@ async function loadStatus() {
     `;
   } catch (e) {
     bar.innerHTML = `<div class="status-chip error"><span class="status-dot"></span>Offline</div>`;
-    content.innerHTML = `<div class="section"><div style="padding:16px;color:var(--destructive)">${e.message}</div></div>`;
+    content.innerHTML = `<div class="section"><div style="padding:16px;color:var(--destructive)">${esc(e.message)}</div></div>`;
   }
 }
 
@@ -2237,7 +2237,7 @@ async function loadCron() {
     }).join('');
     content.innerHTML = html;
   } catch (e) {
-    content.innerHTML = `<div class="cron-empty" style="color:var(--destructive)">Error: ${e.message}</div>`;
+    content.innerHTML = `<div class="cron-empty" style="color:var(--destructive)">Error: ${esc(e.message)}</div>`;
   }
 }
 
@@ -2394,10 +2394,12 @@ window.cmdList = [
 
   // Browser mode: enforce token auth
   if (!isTelegram) {
-    // Try CloudStorage first (Telegram-native), then localStorage (browser)
+    // Attempt to restore token from Telegram CloudStorage (Telegram-native persistent store).
+    // sessionStorage is intentionally NOT used as a fallback — it is readable by any
+    // same-origin script and would expose the token to XSS. Users re-enter the token
+    // if CloudStorage is unavailable (cold browser session).
     let savedToken = null;
     if (CS) { try { savedToken = await CS.getItem('hermes_api_token'); } catch (_) {} }
-    if (!savedToken) { try { savedToken = sessionStorage.getItem('hermes_api_token'); } catch (_) {} }
     if (savedToken) {
       apiToken = savedToken;
       // Resume init with stored token
