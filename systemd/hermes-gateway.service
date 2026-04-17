@@ -18,11 +18,19 @@ WorkingDirectory=/home/YOU/.hermes/hermes-agent
 Environment="PATH=/home/YOU/.hermes/hermes-agent/venv/bin:/usr/bin:/home/YOU/.local/bin:/usr/local/bin"
 Environment="VIRTUAL_ENV=/home/YOU/.hermes/hermes-agent/venv"
 Environment="HERMES_HOME=/home/YOU/.hermes"
-# — Required for Mini App auth —
-Environment="API_SERVER_KEY=YOUR_API_KEY_HERE"
-Environment="TELEGRAM_BOT_TOKEN=YOUR_BOT_TOKEN_HERE"
-Environment="TELEGRAM_OWNER_ID=YOUR_USER_ID_HERE"
-Environment="TELEGRAM_ALLOWED_USERS=YOUR_USER_ID_HERE"
+# — Secrets are loaded from ~/.hermes/.env (chmod 600) — NOT inlined here.
+# Inline Environment= values are visible via `systemctl show` and `journalctl`,
+# leaking secrets to any local user who can run those commands.
+#
+# Your ~/.hermes/.env should contain:
+#   API_SERVER_KEY=<generated with: python3 -c "import secrets; print(secrets.token_urlsafe(32))">
+#   TELEGRAM_BOT_TOKEN=<from @BotFather>
+#   TELEGRAM_OWNER_ID=<your numeric Telegram user ID>
+#   TELEGRAM_ALLOWED_USERS=<comma-separated allowed user IDs>
+#
+# Lock down the file after editing:
+#   chmod 600 ~/.hermes/.env
+EnvironmentFile=%h/.hermes/.env
 Restart=on-failure
 RestartSec=30
 KillMode=mixed
