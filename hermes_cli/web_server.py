@@ -325,7 +325,7 @@ class EnvVarReveal(BaseModel):
 
 
 @app.get("/api/status")
-async def get_status():
+async def get_status(_: None = Depends(_require_auth_local_ok)):
     current_ver, latest_ver = check_config_version()
 
     gateway_pid = get_running_pid()
@@ -398,7 +398,7 @@ async def get_status():
 
 
 @app.get("/api/sessions")
-async def get_sessions(limit: int = 20, offset: int = 0):
+async def get_sessions(limit: int = 20, offset: int = 0, _: None = Depends(_require_auth_local_ok)):
     try:
         from hermes_state import SessionDB
         db = SessionDB()
@@ -420,7 +420,7 @@ async def get_sessions(limit: int = 20, offset: int = 0):
 
 
 @app.get("/api/sessions/search")
-async def search_sessions(q: str = "", limit: int = 20):
+async def search_sessions(q: str = "", limit: int = 20, _: None = Depends(_require_auth_local_ok)):
     """Full-text search across session message content using FTS5."""
     if not q or not q.strip():
         return {"results": []}
@@ -477,19 +477,19 @@ def _normalize_config_for_web(config: Dict[str, Any]) -> Dict[str, Any]:
 
 
 @app.get("/api/config")
-async def get_config():
+async def get_config(_: None = Depends(_require_auth_local_ok)):
     config = _normalize_config_for_web(load_config())
     # Strip internal keys that the frontend shouldn't see or send back
     return {k: v for k, v in config.items() if not k.startswith("_")}
 
 
 @app.get("/api/config/defaults")
-async def get_defaults():
+async def get_defaults(_: None = Depends(_require_auth_local_ok)):
     return DEFAULT_CONFIG
 
 
 @app.get("/api/config/schema")
-async def get_schema():
+async def get_schema(_: None = Depends(_require_auth_local_ok)):
     return {"fields": CONFIG_SCHEMA, "category_order": _CATEGORY_ORDER}
 
 
@@ -558,7 +558,7 @@ async def get_session_token(request: Request):
 
 
 @app.get("/api/env")
-async def get_env_vars():
+async def get_env_vars(_: None = Depends(_require_auth_local_ok)):
     env_on_disk = load_env()
     result = {}
     for var_name, info in OPTIONAL_ENV_VARS.items():
@@ -849,7 +849,7 @@ def _resolve_provider_status(provider_id: str, status_fn) -> Dict[str, Any]:
 
 
 @app.get("/api/providers/oauth")
-async def list_oauth_providers():
+async def list_oauth_providers(_: None = Depends(_require_auth_local_ok)):
     """Enumerate every OAuth-capable LLM provider with current status.
 
     Response shape (per provider):
@@ -1483,7 +1483,7 @@ async def submit_oauth_code(provider_id: str, body: OAuthSubmitBody, request: Re
 
 
 @app.get("/api/providers/oauth/{provider_id}/poll/{session_id}")
-async def poll_oauth_session(provider_id: str, session_id: str):
+async def poll_oauth_session(provider_id: str, session_id: str, _: None = Depends(_require_auth_local_ok)):
     """Poll a device-code session's status (no auth — read-only state)."""
     with _oauth_sessions_lock:
         sess = _oauth_sessions.get(session_id)
@@ -1518,7 +1518,7 @@ async def cancel_oauth_session(session_id: str, request: Request):
 
 
 @app.get("/api/sessions/{session_id}")
-async def get_session_detail(session_id: str):
+async def get_session_detail(session_id: str, _: None = Depends(_require_auth_local_ok)):
     from hermes_state import SessionDB
     db = SessionDB()
     try:
@@ -1532,7 +1532,7 @@ async def get_session_detail(session_id: str):
 
 
 @app.get("/api/sessions/{session_id}/messages")
-async def get_session_messages(session_id: str):
+async def get_session_messages(session_id: str, _: None = Depends(_require_auth_local_ok)):
     from hermes_state import SessionDB
     db = SessionDB()
     try:
@@ -1569,6 +1569,7 @@ async def get_logs(
     level: Optional[str] = None,
     component: Optional[str] = None,
     search: Optional[str] = None,
+    _: None = Depends(_require_auth_local_ok),
 ):
     from hermes_cli.logs import _read_tail, LOG_FILES
 
@@ -1632,13 +1633,13 @@ class CronJobUpdate(BaseModel):
 
 
 @app.get("/api/cron/jobs")
-async def list_cron_jobs():
+async def list_cron_jobs(_: None = Depends(_require_auth_local_ok)):
     from cron.jobs import list_jobs
     return list_jobs(include_disabled=True)
 
 
 @app.get("/api/cron/jobs/{job_id}")
-async def get_cron_job(job_id: str):
+async def get_cron_job(job_id: str, _: None = Depends(_require_auth_local_ok)):
     from cron.jobs import get_job
     job = get_job(job_id)
     if not job:
@@ -1713,7 +1714,7 @@ class SkillToggle(BaseModel):
 
 
 @app.get("/api/skills")
-async def get_skills():
+async def get_skills(_: None = Depends(_require_auth_local_ok)):
     from tools.skills_tool import _find_all_skills
     from hermes_cli.skills_config import get_disabled_skills
     config = load_config()
@@ -1738,7 +1739,7 @@ async def toggle_skill(body: SkillToggle, _: None = Depends(_require_auth)):
 
 
 @app.get("/api/tools/toolsets")
-async def get_toolsets():
+async def get_toolsets(_: None = Depends(_require_auth_local_ok)):
     from hermes_cli.tools_config import (
         _get_effective_configurable_toolsets,
         _get_platform_tools,
@@ -1779,7 +1780,7 @@ class RawConfigUpdate(BaseModel):
 
 
 @app.get("/api/config/raw")
-async def get_config_raw():
+async def get_config_raw(_: None = Depends(_require_auth_local_ok)):
     path = get_config_path()
     if not path.exists():
         return {"yaml": ""}
@@ -1804,7 +1805,7 @@ async def update_config_raw(body: RawConfigUpdate, _: None = Depends(_require_au
 
 
 @app.get("/api/analytics/usage")
-async def get_usage_analytics(days: int = 30):
+async def get_usage_analytics(days: int = 30, _: None = Depends(_require_auth_local_ok)):
     from hermes_state import SessionDB
     db = SessionDB()
     try:
@@ -2042,7 +2043,7 @@ async def telegram_auth_middleware(request: Request, call_next):
 # ---------------------------------------------------------------------------
 
 @app.get("/api/session-usage")
-async def get_session_usage():
+async def get_session_usage(_: None = Depends(_require_auth_local_ok)):
     """Cumulative token usage from the session store."""
     try:
         from hermes_state import SessionDB
@@ -2079,7 +2080,7 @@ def _get_gw_api_key() -> str:
 
 
 @app.post("/v1/chat/completions")
-async def chat_completions_proxy(request: Request):
+async def chat_completions_proxy(request: Request, _: None = Depends(_require_auth)):
     """Proxy chat requests to the gateway API server on :8642."""
     import httpx as _httpx
 
@@ -2138,7 +2139,7 @@ async def chat_completions_proxy(request: Request):
 # ---------------------------------------------------------------------------
 
 @app.get("/api/system-health")
-async def get_system_health():
+async def get_system_health(_: None = Depends(_require_auth_local_ok)):
     """System health metrics (CPU, memory, disk, uptime)."""
     try:
         import psutil
@@ -2173,7 +2174,7 @@ async def get_system_health():
 # ---------------------------------------------------------------------------
 
 @app.get("/api/model-info")
-async def get_model_info():
+async def get_model_info(_: None = Depends(_require_auth_local_ok)):
     """Current model, provider, and context length."""
     config = load_config()
     model_val = config.get("model", "")
@@ -2254,7 +2255,7 @@ def _make_agent_name() -> str:
 
 
 @app.get("/api/agents")
-async def list_agents():
+async def list_agents(_: None = Depends(_require_auth_local_ok)):
     """List all spawned agent instances."""
     alive = []
     for name, info in list(_agent_registry.items()):
@@ -2359,7 +2360,7 @@ def _validate_agent_name(name: str) -> str:
 
 
 @app.get("/api/agents/{name}")
-async def get_agent(name: str):
+async def get_agent(name: str, _: None = Depends(_require_auth_local_ok)):
     """Get agent details and output."""
     name = _validate_agent_name(name)
     if name not in _agent_registry:
@@ -2445,7 +2446,7 @@ async def send_agent_message(name: str, body: AgentMessageBody, _: None = Depend
 
 
 @app.get("/api/processes")
-async def list_processes():
+async def list_processes(_: None = Depends(_require_auth_local_ok)):
     """List background processes."""
     try:
         import psutil
