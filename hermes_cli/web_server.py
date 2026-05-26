@@ -51,7 +51,7 @@ from gateway.status import get_running_pid, read_runtime_status
 try:
     from fastapi import Depends, FastAPI, HTTPException, Request
     from fastapi.middleware.cors import CORSMiddleware
-    from fastapi.responses import FileResponse, JSONResponse
+    from fastapi.responses import FileResponse, JSONResponse, Response
     from fastapi.staticfiles import StaticFiles
     from pydantic import BaseModel
 except ImportError:
@@ -2496,6 +2496,37 @@ def mount_spa(application: FastAPI):
         return
 
     application.mount("/assets", StaticFiles(directory=WEB_DIST / "assets"), name="assets")
+
+    # --- CRM proxy: /crm* → Twenty on localhost:3000 ---
+    import httpx as _httpx_crm
+    _CRM_UPSTREAM = "http://127.0.0.1:3000"
+
+    @application.api_route("/crm/{full_path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"])
+    async def crm_proxy(full_path: str, request: Request):
+        strip_prefix = request.url.path[len("/crm"):] or "/"
+        upstream_url = f"{_CRM_UPSTREAM}{strip_prefix}"
+        if request.url.query:
+            upstream_url += f"?{request.url.query}"
+        body = await request.body()
+        fwd_headers = {k: v for k, v in request.headers.items()
+                       if k.lower() not in ("host", "transfer-encoding", "content-length")}
+        try:
+            async with _httpx_crm.AsyncClient(timeout=_httpx_crm.Timeout(30.0)) as client:
+                resp = await client.request(
+                    method=request.method,
+                    url=upstream_url,
+                    headers=fwd_headers,
+                    content=body,
+                )
+            return Response(
+                content=resp.content,
+                status_code=resp.status_code,
+                headers={k: v for k, v in resp.headers.items()
+                         if k.lower() not in ("transfer-encoding", "content-length", "content-encoding")},
+                media_type=resp.headers.get("content-type"),
+            )
+        except Exception as exc:
+            raise HTTPException(status_code=502, detail=f"CRM proxy error: {exc}")
 
     @application.get("/{full_path:path}")
     async def serve_spa(full_path: str):

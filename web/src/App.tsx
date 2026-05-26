@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Activity, BarChart3, Bot, Clock, FileText, KeyRound, MessageSquare, Package, Settings, Terminal } from "lucide-react";
+import { Activity, BarChart3, Bot, Clock, FileText, KeyRound, MessageSquare, Package, Settings, Terminal, Users } from "lucide-react";
 import StatusPage from "@/pages/StatusPage";
 import ChatPage from "@/pages/ChatPage";
 import AgentsPage from "@/pages/AgentsPage";
@@ -10,9 +10,11 @@ import LogsPage from "@/pages/LogsPage";
 import AnalyticsPage from "@/pages/AnalyticsPage";
 import CronPage from "@/pages/CronPage";
 import SkillsPage from "@/pages/SkillsPage";
+import CRMPage from "@/pages/CRMPage";
 
 const NAV_ITEMS = [
   { id: "chat", label: "Chat", icon: Terminal },
+  { id: "crm", label: "CRM", icon: Users },
   { id: "status", label: "Status", icon: Activity },
   { id: "agents", label: "Agents", icon: Bot },
   { id: "sessions", label: "Sessions", icon: MessageSquare },
@@ -28,6 +30,7 @@ type PageId = (typeof NAV_ITEMS)[number]["id"];
 
 const PAGE_COMPONENTS: Record<PageId, React.FC> = {
   chat: ChatPage,
+  crm: CRMPage,
   status: StatusPage,
   agents: AgentsPage,
   sessions: SessionsPage,
@@ -40,7 +43,7 @@ const PAGE_COMPONENTS: Record<PageId, React.FC> = {
 };
 
 // Pages that need full height (chat)
-const FULL_HEIGHT_PAGES = new Set(["chat"]);
+const FULL_HEIGHT_PAGES = new Set(["chat", "crm"]);
 
 export default function App() {
   const [page, setPage] = useState<PageId>("chat");
